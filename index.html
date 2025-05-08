@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Authentication System/login</title>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <style>
+    .form-toggle {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .form-toggle button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .form-toggle .active {
+      background-color: grey;
+      color: white;
+    }
+
+    .login-page {
+      width: 300px;
+      margin: auto;
+    }
+
+    .login-page {}
+
+    .form input {
+      width: 93%;
+      margin-bottom: 10px;
+      padding: 10px;
+    }
+
+    .form button {
+      width: 100%;
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-page">
+    <div class="form-toggle" id="authBtn">
+      <button id="loginTab" class="active" onclick="showForm('login')">
+        Login
+      </button>
+      <button id="signupTab" onclick="showForm('signup')">Sign Up</button>
+    </div>
+
+    <div class="form">
+      <div id="loginForm" class="login-form">
+        <input type="text" id="loginUsername" placeholder="Username/Email" />
+        <input type="password" id="loginPassword" placeholder="Password" />
+        <div class="g-recaptcha" data-sitekey="6LfBlTErAAAAAD9uJA_aKCjds_UkwlsE5vLjNc6N"></div>
+        <br />
+        <button onclick="LoginButton()">Login</button>
+      </div>
+
+      <div id="signupForm" class="signup-form" style="display: none">
+        <input type="text" id="signupName" placeholder="Name" />
+        <input type="email" id="signupEmail" placeholder="Email" />
+        <input type="password" id="signupPassword" placeholder="Password" />
+        <button onclick="SignupButton()">Sign Up</button>
+      </div>
+
+      <div id="userData" style="display: none">
+        <ul id="userInfo">
+          <li><span>Id: <span id="userId"></span></span></li>
+          <li><span>Name: <span id="userName"></span></span></li>
+          <li><span>Email: <span id="userEmail"></span></span></li>
+          <li><span>Created At: <span id="userCreatedAt"></span></span></li>
+        </ul>
+        <button onclick="logOutBtn()">Logout</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let userData;
+    if (localStorage.getItem("auth_token") != null) {
+      document.getElementById('userId').textContent =JSON.parse( localStorage.getItem("user")).id;
+          document.getElementById('userName').textContent = JSON.parse( localStorage.getItem("user")).name;
+          document.getElementById('userEmail').textContent = JSON.parse( localStorage.getItem("user")).email;
+          document.getElementById('userCreatedAt').textContent = JSON.parse( localStorage.getItem("user")).created_at;
+      showForm("profile");
+    }
+
+    function showForm(formType) {
+      if (formType == "login") {
+        document.title = "Authentication System/login";
+        document.getElementById("loginForm").style.display = "block";
+        document.getElementById("signupForm").style.display = "none";
+        document.getElementById("authBtn").style.display = "block";
+        document.getElementById("loginTab").classList.add("active");
+        document.getElementById("signupTab").classList.remove("active");
+        document.getElementById("userData").style.display = "none";
+
+      } else if (formType == "profile") {
+        document.title = "Authentication System/profile";
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("signupForm").style.display = "none";
+        document.getElementById("authBtn").style.display = "none";
+        document.getElementById("userData").style.display = "block";
+      } else {
+        document.title = "Authentication System/signup";
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("signupForm").style.display = "block";
+        document.getElementById("signupTab").classList.add("active");
+        document.getElementById("loginTab").classList.remove("active");
+      }
+    }
+
+    // login btn funtion get login btn data
+    function LoginButton() {
+      let username = document.getElementById("loginUsername").value;
+      let password = document.getElementById("loginPassword").value;
+      const captchaResponse = grecaptcha.getResponse();
+
+      if (!captchaResponse) {
+        alert("Please complete the CAPTCHA.");
+        return;
+      }
+
+      // alert("Login successfully");
+      const dataObj = {
+        username: username,
+        userPassword: password,
+      };
+      loginUser(dataObj);
+    }
+
+    // sign up btn funtion get sign up field data and passed to sign up register funtion
+    function SignupButton() {
+      let signupName = document.getElementById("signupName").value;
+      let email = document.getElementById("signupEmail").value;
+      let signupPassword = document.getElementById("signupPassword").value;
+      const captchaResponse = grecaptcha.getResponse();
+
+      const isEmail = email.trim().includes("@");
+      if (!signupName && !email && !signupPassword) {
+        alert("Please fill all sign-up fields.");
+        return;
+      }
+      if (!signupName.trim()) {
+        alert("Please enter your username.");
+        return;
+      }
+      if (!email.trim()) {
+        alert("Please enter your email.");
+        return;
+      }
+      if (!signupPassword.trim()) {
+        alert("Please enter your password.");
+        return;
+      }
+      if (email.length < 3) {
+        alert("Username or email is too short.");
+        return;
+      }
+      if (!isEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert("Invalid email format.");
+        return;
+      }
+
+      const dataObj = {
+        username: signupName,
+        userEmail: email,
+        userPassword: signupPassword,
+      };
+      registerUser(dataObj);
+    }
+
+    // user register funtion
+    async function registerUser(data) {
+      try {
+        const getSignUpResponse = await fetch(
+          "http://localhost:3000/signup",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          }
+        );
+
+        const result = await getSignUpResponse.json();
+        if (result.status == 200) {
+          showForm("login");
+          alert(result.message);
+        } else {
+          alert(result.message);
+        }
+      } catch (err) {
+        alert("Server error. Please try again later.");
+      }
+    }
+
+    //user login funtion
+    async function loginUser(data) {
+      try {
+        const getSignUpResponse = await fetch("http://localhost:3000/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+
+        const result = await getSignUpResponse.json(); 
+        if (result.status == 200) {
+          alert(result.message);
+          showForm("profile");
+          document.getElementById('userId').textContent = result.user.id;
+          document.getElementById('userName').textContent = result.user.name;
+          document.getElementById('userEmail').textContent = result.user.email;
+          document.getElementById('userCreatedAt').textContent = result.user.created_at;
+          document.getElementById('userData').style.display = 'block';
+          localStorage.setItem("user", JSON.stringify(result.user));
+          localStorage.setItem("auth_token", result.token);
+        } else {
+          alert(result.message);
+        }
+      } catch (err) {
+        alert("Server error. Please try again later.");
+      }
+    }
+
+    // logout button 
+    function logOutBtn() {
+      localStorage.removeItem("user");
+      localStorage.removeItem("auth_token");
+      showForm("login");
+    }
+  </script>
+</body>
+
+</html>
